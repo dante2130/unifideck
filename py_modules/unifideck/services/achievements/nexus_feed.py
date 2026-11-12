@@ -23,7 +23,6 @@ class NexusFeed:
     def __init__(self, game_id: str, title_id: int, product_id: str = "") -> None:
         self.game_id = game_id
         self.title_id = f"unifideck.{title_id}"
-        self.has_baseline = False
         self.product_id = product_id
         self.cover_url = ""
 
@@ -90,8 +89,7 @@ class NexusFeed:
         try:
             ensure_private_dir(self.directory)
             write_private_json(self.directory / f"{self.title_id}.json", snapshot)
-            events = [items[key] for key in items if key in new_keys] if self.has_baseline else []
-            self.has_baseline = True
+            events = [item for key, item in items.items() if key in new_keys and item["unlocked"]]
             if events:
                 self._append_events(events, title_name, now)
         except OSError:

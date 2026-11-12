@@ -75,12 +75,14 @@ class AchievementWatcher:
         self._registry = registry
         self._state = AchievementStateStore()
         self._poll_tasks: dict[str, asyncio.Task[Any]] = {}
+        self._finish_tasks: dict[str, asyncio.Task[Any]] = {}
         self._baseline: dict[str, set[str]] = {}
         self._seen: dict[str, set[str]] = {}
         # GOG Galaxy client id per running GOG session, resolved on demand
         # to route a comet push when several GOG games run at once.
         self._client_ids: dict[str, str | None] = {}
         self._nexus_feeds: dict[str, NexusFeed] = {}
+        self._xbox_session_started: dict[str, float] = {}
         self._comet: CometEventReceiver | None = None
         auto_wire(self, bus)
 
@@ -106,13 +108,34 @@ class AchievementWatcher:
         if store not in ACHIEVEMENT_STORES or not game_id:
             return
         key = f"{store}:{game_id}"
+        previous = self._finish_tasks.pop(key, None)
+        if previous is not None:
+            previous.cancel()
+        if store == "microsoft":
+            self._cancel(key)
+            self._baseline.pop(key, None)
+            self._seen.pop(key, None)
+            self._xbox_session_started[key] = time.time()
+            self._poll_tasks[key] = asyncio.create_task(self._start_xbox_session(game_id))
+            return
+        await self._load_baseline(store, game_id)
+        self._cancel(key)
+        self._poll_tasks[key] = asyncio.create_task(self._poll_loop(store, game_id))
+
+    async def _start_xbox_session(self, game_id: str) -> None:
+        # Xbox authentication can exceed the event bus's handler deadline.
+        await self._load_baseline("microsoft", game_id)
+        await self._poll_loop("microsoft", game_id)
+
+    async def _load_baseline(self, store: str, game_id: str) -> None:
+        key = f"{store}:{game_id}"
         feed = await asyncio.to_thread(NexusFeed.for_game, game_id) if store == "microsoft" else None
         if feed:
             self._nexus_feeds[key] = feed
             feed.set_running(True)
             await feed.load_cover()
         payload = await self._fetch(store, game_id)
-        baseline = unlocked_keys(payload) if payload is not None else None
+        baseline = unlocked_keys(payload) if payload is not None and (store != "microsoft" or payload.get("total")) else None
         if feed and payload is not None:
             feed.publish(payload, set())
         if baseline is None:
@@ -120,14 +143,10 @@ class AchievementWatcher:
             # session diff still has a reference point.
             entry = await asyncio.to_thread(self._state.get, store, game_id)
             baseline = set((entry or {}).get("unlocked_keys") or [])
-            if feed and entry is not None:
-                feed.has_baseline = True
+        elif store == "microsoft":
+            self._xbox_session_started.pop(key, None)
         self._baseline[key] = set(baseline)
         self._seen[key] = set(baseline)
-        self._cancel(key)
-        self._poll_tasks[key] = asyncio.create_task(
-            self._poll_loop(store, game_id),
-        )
 
     @subscribe(Events.GAME_STOPPED)
     async def _on_game_stopped(self, **kwargs: Any) -> None:
@@ -136,9 +155,12 @@ class AchievementWatcher:
         game_id = kwargs.get("game_id")
         if store not in ACHIEVEMENT_STORES or not game_id:
             return
-        self._cancel(f"{store}:{game_id}")
-        self._client_ids.pop(f"{store}:{game_id}", None)
-        feed = self._nexus_feeds.get(f"{store}:{game_id}")
+        key = f"{store}:{game_id}"
+        if key in self._finish_tasks:
+            return
+        self._cancel(key)
+        self._client_ids.pop(key, None)
+        feed = self._nexus_feeds.get(key)
         if feed:
             feed.set_running(False)
         inst = self._store(store)
@@ -147,7 +169,9 @@ class AchievementWatcher:
             inst.invalidate_achievements(game_id)
         # Fire-and-forget so the GAME_STOPPED emit isn't blocked on the
         # network reconcile + retries (mirrors CloudSaveService.sync_up).
-        _track(asyncio.create_task(self._finish_session(store, game_id)))
+        task = asyncio.create_task(self._finish_session(store, game_id))
+        self._finish_tasks[key] = task
+        _track(task)
 
     async def get_last_session(
         self, store: str, game_id: str,
@@ -162,6 +186,10 @@ class AchievementWatcher:
         for feed in self._nexus_feeds.values():
             feed.set_running(False)
         self._nexus_feeds.clear()
+        self._xbox_session_started.clear()
+        for task in self._finish_tasks.values():
+            task.cancel()
+        self._finish_tasks.clear()
         for key in list(self._poll_tasks):
             self._cancel(key)
         if self._comet is not None:
@@ -228,9 +256,12 @@ class AchievementWatcher:
         try:
             await self._reconcile(store, game_id)
         finally:
-            self._nexus_feeds.pop(key, None)
-            self._baseline.pop(key, None)
-            self._seen.pop(key, None)
+            if self._finish_tasks.get(key) is asyncio.current_task():
+                self._finish_tasks.pop(key, None)
+                self._nexus_feeds.pop(key, None)
+                self._baseline.pop(key, None)
+                self._seen.pop(key, None)
+                self._xbox_session_started.pop(key, None)
 
     async def _reconcile(self, store: str, game_id: str) -> None:
         """Reconcile."""
@@ -271,6 +302,13 @@ class AchievementWatcher:
         """Emit."""
         key = f"{store}:{game_id}"
         seen = self._seen.setdefault(key, set())
+        if store == "microsoft" and (key in self._xbox_session_started or key not in self._baseline):
+            started = self._xbox_session_started.get(key, float("inf"))
+            historical = {row["key"] for row in payload.get("achievements", [])
+                          if row.get("unlocked") and row.get("key")
+                          and (row.get("unlocked_at") is None or row["unlocked_at"] < started)}
+            self._baseline.setdefault(key, set()).update(historical)
+            seen.update(historical)
         feed = self._nexus_feeds.get(key)
         if feed:
             feed.publish(payload, unlocked_keys(payload) - seen)
