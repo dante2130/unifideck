@@ -232,3 +232,39 @@ async def test_comet_receiver_started_and_stopped_with_watcher(make, tmp_path) -
         await watcher.stop()
     assert watcher._comet is None
     assert not config.exists()
+
+
+async def test_xbox_pc_session_exports_snapshot_and_only_new_unlocks(make, tmp_path, monkeypatch) -> None:
+    from unifideck.services.achievements.nexus_feed import NexusFeed
+
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+    feed = NexusFeed("merged-game", 42)
+    monkeypatch.setattr(
+        "unifideck.services.achievements.nexus_feed.find_install_record",
+        lambda game_id: {"state": "installed", "titleId": "2A", "productId": "9PK087LNGJC5"},
+    )
+    async def cover(product_id, timeout):
+        assert product_id == "9PK087LNGJC5"
+        return {"urls": {"grid": "https://store-images.s-microsoft.com/test"}}
+
+    monkeypatch.setattr("unifideck.services.achievements.nexus_feed.microsoft_metadata", cover)
+    before = _payload("microsoft", ["a"], ["b"])
+    after = _payload("microsoft", ["a", "b"], [])
+    for payload in (before, after):
+        for row in payload["achievements"]:
+            row.update(description="", image_unlocked="", gamerscore=10, hidden=False)
+    watcher, _ = make({"microsoft": _Store("microsoft", [before, after])})
+
+    await watcher._on_game_launched(store="microsoft", game_id="merged-game")
+    running = feed.directory / "running.json"
+    events = feed.directory / "achievement-events.jsonl"
+    assert json.loads(running.read_text())["titleId"] == "unifideck.42"
+    assert not events.exists()
+
+    await watcher._on_game_stopped(store="microsoft", game_id="merged-game")
+    await _drain()
+    snapshot = json.loads((feed.directory / "unifideck.42.json").read_text())
+    assert snapshot["gamerscore"] == 20
+    assert snapshot["coverUrl"] == "https://store-images.s-microsoft.com/test"
+    assert [json.loads(line)["id"] for line in events.read_text().splitlines()] == ["b"]
+    assert not running.exists()
