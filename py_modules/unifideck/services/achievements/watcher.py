@@ -35,6 +35,7 @@ from unifideck.stores.shared.achievements_error import StoreAchievementsError
 from unifideck.stores.shared.achievements_payload import unlocked_keys
 
 from .comet_events import CometEventReceiver
+from .nexus_feed import NexusFeed
 from .state import AchievementStateStore
 
 if TYPE_CHECKING:
@@ -79,6 +80,7 @@ class AchievementWatcher:
         # GOG Galaxy client id per running GOG session, resolved on demand
         # to route a comet push when several GOG games run at once.
         self._client_ids: dict[str, str | None] = {}
+        self._nexus_feeds: dict[str, NexusFeed] = {}
         self._comet: CometEventReceiver | None = None
         auto_wire(self, bus)
 
@@ -104,12 +106,22 @@ class AchievementWatcher:
         if store not in ACHIEVEMENT_STORES or not game_id:
             return
         key = f"{store}:{game_id}"
-        baseline = await self._unlocked_now(store, game_id)
+        feed = await asyncio.to_thread(NexusFeed.for_game, game_id) if store == "microsoft" else None
+        if feed:
+            self._nexus_feeds[key] = feed
+            feed.set_running(True)
+            await feed.load_cover()
+        payload = await self._fetch(store, game_id)
+        baseline = unlocked_keys(payload) if payload is not None else None
+        if feed and payload is not None:
+            feed.publish(payload, set())
         if baseline is None:
             # Offline at launch — fall back to the last persisted set so the
             # session diff still has a reference point.
             entry = await asyncio.to_thread(self._state.get, store, game_id)
             baseline = set((entry or {}).get("unlocked_keys") or [])
+            if feed and entry is not None:
+                feed.has_baseline = True
         self._baseline[key] = set(baseline)
         self._seen[key] = set(baseline)
         self._cancel(key)
@@ -126,6 +138,9 @@ class AchievementWatcher:
             return
         self._cancel(f"{store}:{game_id}")
         self._client_ids.pop(f"{store}:{game_id}", None)
+        feed = self._nexus_feeds.get(f"{store}:{game_id}")
+        if feed:
+            feed.set_running(False)
         inst = self._store(store)
         if inst is not None:
             # Drop the cache so the reconcile pull is fresh.
@@ -144,6 +159,9 @@ class AchievementWatcher:
     async def stop(self) -> None:
         """Unsubscribe + cancel in-flight poll tasks (shutdown/tests)."""
         self._bus.unsubscribe_all(self)
+        for feed in self._nexus_feeds.values():
+            feed.set_running(False)
+        self._nexus_feeds.clear()
         for key in list(self._poll_tasks):
             self._cancel(key)
         if self._comet is not None:
@@ -210,6 +228,7 @@ class AchievementWatcher:
         try:
             await self._reconcile(store, game_id)
         finally:
+            self._nexus_feeds.pop(key, None)
             self._baseline.pop(key, None)
             self._seen.pop(key, None)
 
@@ -252,6 +271,9 @@ class AchievementWatcher:
         """Emit."""
         key = f"{store}:{game_id}"
         seen = self._seen.setdefault(key, set())
+        feed = self._nexus_feeds.get(key)
+        if feed:
+            feed.publish(payload, unlocked_keys(payload) - seen)
         for ach in payload.get("achievements", []):
             ach_key = ach.get("key")
             if ach.get("unlocked") and ach_key and ach_key not in seen:
@@ -299,11 +321,6 @@ class AchievementWatcher:
         except Exception:
             logger.debug("[achievements.watcher] fetch error", exc_info=True)
             return None
-
-    async def _unlocked_now(self, store: str, game_id: str) -> set[str] | None:
-        """The keys unlocked right now, or None when unreadable."""
-        payload = await self._fetch(store, game_id)
-        return unlocked_keys(payload) if payload is not None else None
 
     def _store(self, store: str) -> Any:
         """The registered store instance, or None."""
