@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -73,6 +74,13 @@ async def _drain() -> None:
         await asyncio.gather(*list(w._BACKGROUND))
 
 
+async def _wait_for_baseline(watcher, key: str) -> None:
+    async def ready():
+        while key not in watcher._baseline:
+            await asyncio.sleep(0.001)
+    await asyncio.wait_for(ready(), timeout=2)
+
+
 @pytest.mark.parametrize("store", ["gog", "epic", "microsoft"])
 async def test_session_toasts_new_unlock_once_and_records_summary(make, store: str) -> None:
     before = _payload(store, ["a"], ["b", "c"])
@@ -81,6 +89,7 @@ async def test_session_toasts_new_unlock_once_and_records_summary(make, store: s
     watcher, toasts = make({store: inst})
 
     await watcher._on_game_launched(store=store, game_id="g1")
+    await _wait_for_baseline(watcher, f"{store}:g1")
     await watcher._on_game_stopped(store=store, game_id="g1")
     await _drain()
 
@@ -104,15 +113,39 @@ async def test_other_stores_are_ignored(make) -> None:
 
 
 async def test_store_error_falls_back_to_saved_baseline(make) -> None:
-    after = _payload("microsoft", ["a", "b"], [])
+    after = _payload("microsoft", ["a", "old", "b"], [])
+    next(row for row in after["achievements"] if row["key"] == "b")["unlocked_at"] = time.time() + 1
     inst = _Store("microsoft", [StoreAchievementsError("offline"), after])
     watcher, toasts = make({"microsoft": inst})
     await asyncio.to_thread(watcher._state.update, "microsoft", "g1", unlocked_keys={"a"})
 
     await watcher._on_game_launched(store="microsoft", game_id="g1")
+    await _wait_for_baseline(watcher, "microsoft:g1")
     await watcher._on_game_stopped(store="microsoft", game_id="g1")
     await _drain()
     assert toasts == ["microsoft:b"]
+
+
+async def test_stop_while_xbox_baseline_is_pending_only_toasts_session_unlocks(make, monkeypatch) -> None:
+    final = _payload("microsoft", ["old", "new"], [])
+    next(row for row in final["achievements"] if row["key"] == "new")["unlocked_at"] = time.time() + 1
+    watcher, toasts = make({"microsoft": _Store("microsoft", [final])})
+    pending = asyncio.Event()
+
+    async def fetch(store, game_id):
+        if not pending.is_set():
+            pending.set()
+            await asyncio.Event().wait()
+        return final
+
+    monkeypatch.setattr(watcher, "_fetch", fetch)
+    await watcher._on_game_launched(store="microsoft", game_id="g1")
+    await asyncio.wait_for(pending.wait(), timeout=2)
+    await watcher._on_game_stopped(store="microsoft", game_id="g1")
+    await _drain()
+
+    assert toasts == ["microsoft:new"]
+    assert (await watcher.get_last_session("microsoft", "g1"))["names"] == ["NEW"]
 
 
 def test_microsoft_polls_more_gently() -> None:
@@ -256,6 +289,7 @@ async def test_xbox_pc_session_exports_snapshot_and_only_new_unlocks(make, tmp_p
     watcher, _ = make({"microsoft": _Store("microsoft", [before, after])})
 
     await watcher._on_game_launched(store="microsoft", game_id="merged-game")
+    await _wait_for_baseline(watcher, "microsoft:merged-game")
     running = feed.directory / "running.json"
     events = feed.directory / "achievement-events.jsonl"
     assert json.loads(running.read_text())["titleId"] == "unifideck.42"
