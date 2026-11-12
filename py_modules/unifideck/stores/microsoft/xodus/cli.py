@@ -279,6 +279,17 @@ class XodusCli:
         except ParseError as e:
             raise XodusCliError(e.code) from None
 
+    async def achievements(self, title_id: int) -> dict[str, Any]:
+        """Read a title using the account that runs Xbox PC games."""
+        paths = await self.backend()
+        async with self._credential_turn():
+            stdout = await self._json([str(paths.cli), "achievements", str(title_id), "--json"], PROFILE_TIMEOUT_S)
+        payload = last_json_object(stdout)
+        if (payload is None or payload.get("schema") != 1 or str(payload.get("titleId")) != str(title_id)
+                or not isinstance(payload.get("items"), list)):
+            raise XodusCliError("invalid_achievements")
+        return payload
+
     async def library(self, market: str) -> LibraryRead:
         """``library --json``. Never raises for an expected failure."""
         xargv.validate_market(market)
