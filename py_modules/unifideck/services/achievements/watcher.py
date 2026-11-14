@@ -273,7 +273,10 @@ class AchievementWatcher:
         seen = self._seen.setdefault(key, set())
         feed = self._nexus_feeds.get(key)
         if feed:
-            feed.publish(payload, unlocked_keys(payload) - seen)
+            new_keys = unlocked_keys(payload) - seen
+            feed.publish(payload, new_keys)
+            seen.update(new_keys)
+            return
         for ach in payload.get("achievements", []):
             ach_key = ach.get("key")
             if ach.get("unlocked") and ach_key and ach_key not in seen:
