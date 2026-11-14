@@ -253,7 +253,7 @@ async def test_xbox_pc_session_exports_snapshot_and_only_new_unlocks(make, tmp_p
     for payload in (before, after):
         for row in payload["achievements"]:
             row.update(description="", image_unlocked="", gamerscore=10, hidden=False)
-    watcher, _ = make({"microsoft": _Store("microsoft", [before, after])})
+    watcher, toasts = make({"microsoft": _Store("microsoft", [before, after])})
 
     await watcher._on_game_launched(store="microsoft", game_id="merged-game")
     running = feed.directory / "running.json"
@@ -267,4 +267,5 @@ async def test_xbox_pc_session_exports_snapshot_and_only_new_unlocks(make, tmp_p
     assert snapshot["gamerscore"] == 20
     assert snapshot["coverUrl"] == "https://store-images.s-microsoft.com/test"
     assert [json.loads(line)["id"] for line in events.read_text().splitlines()] == ["b"]
+    assert toasts == []
     assert not running.exists()
