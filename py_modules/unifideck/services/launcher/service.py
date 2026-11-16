@@ -15,7 +15,6 @@ import signal
 from typing import TYPE_CHECKING, Any
 
 from unifideck.core.types import Result
-from unifideck.launcher.rpc import emit_stage
 from unifideck.launcher.types.context import LaunchContext, RuntimeState
 from unifideck.launcher.types.options import parse_launch_options
 from unifideck.launcher.wrapper_stores import is_wrapper_store
@@ -176,34 +175,14 @@ class LauncherService:
     ) -> Result:
         """Run the main launch pipeline inside the error-trap.
 
-        Three steps:
-
-        1. Route to the non-launch handler (auth / storefront /
-           install) or to the launch dispatch matrix (real launches).
-        2. For a real launch, emit the ``launchingGame`` toast.
-        3. Enrich the launch result with the elapsed time, stashed
-           in ``Result.metadata["elapsed"]`` because ``Result``
-           has no dedicated elapsed field and the frontend reads
-           this via the documented metadata channel.
-
-        The non-launch branch returns BEFORE the toast: a sign-in or a
-        shop window is not a game, and announcing "Launching Game:
-        epic:epic-store" for one is simply wrong.
+        Route auth, storefront, and install actions separately. For game
+        launches, record elapsed time in the result metadata.
 
         Extracted from ``launch`` (lot 13a) so the outer method
         only calls 5 distinct symbols, well under the fan-out gate.
         """
         if not ctx.is_launch_action:
             return await self._handle_auth_path(ctx)
-        if not ctx.is_xbox_pc_notice:
-            # A notice launches nothing; its own toast is the whole answer.
-            await emit_stage(
-                self._bus,
-                i18n_title_key="toasts.header.gameLaunch",
-                i18n_key="toasts.launcher.launchingGame",
-                game_title=ctx.game_key,
-                priority="low",
-            )
         res = await self._dispatch_launch_kind(ctx, state)
         if res.metadata is None:
             res.metadata = {}  # type: ignore[unreachable]  # guard 'if res.metadata is None'
