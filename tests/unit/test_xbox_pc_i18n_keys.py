@@ -26,7 +26,7 @@ LISTENER = ROOT / "src" / "services" / "boot-event-listener.tsx"
 
 def _launcher_keys() -> set[str]:
     return {
-        *errors.REASON_TOAST_KEYS.values(), errors.LAUNCH_FAILED_KEY, errors.STARTING_KEY,
+        *errors.REASON_TOAST_KEYS.values(), errors.LAUNCH_FAILED_KEY,
         errors.LANGUAGE_UNAVAILABLE_KEY, errors.GAME_ARGS_IGNORED_KEY,
         errors.VC_RUNTIME_INSTALLING_KEY, errors.VC_RUNTIME_FAILED_KEY, errors.INITIALIZING_PREFIX_KEY,
         errors.INSTALL_FROM_STEAM_KEY, "toasts.header.xboxPc", "toasts.header.gameSetup",
