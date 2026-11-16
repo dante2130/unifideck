@@ -19,16 +19,15 @@ score; below threshold, the next is tried.
 from __future__ import annotations
 
 import logging
-import re
 from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from unifideck.stores.shared.wine_path import wine_path_to_linux
-
 from .detection_helpers import (
+    find_game_executable as _find_game_executable,
     load_json_file_safe,
-    looks_like_game_install,
+    registry_install_dirs,
+    staging_has_files,
     walk_install_candidates,
     write_marker_sync,
 )
@@ -139,7 +138,7 @@ class _DetectionCascade:
             state_file = str(
                 Path(game_dir) / "uplay_install.state",
             )
-            if check_install_state(state_file):
+            if not staging_has_files(game_dir) and check_install_state(state_file):
                 candidates.append(game_dir)
         if not candidates:
             return None
@@ -176,7 +175,7 @@ class _DetectionCascade:
             state_file = str(
                 Path(game_dir) / "uplay_install.state",
             )
-            if not check_install_state(state_file):
+            if staging_has_files(game_dir) or not check_install_state(state_file):
                 continue
             if not self.fuzzy_folder_match(
                 folder,
@@ -198,75 +197,13 @@ class _DetectionCascade:
         check_install_state: Callable[[str], bool],
     ) -> dict[str, Any] | None:
         """Detect via registry install ID."""
-        install_id = self._parent._id_map.resolve_install_id(
-            space_id,
-        )
-        if not install_id:
-            return None
-        install_section_pattern = self._build_registry_pattern(
-            install_id,
-        )
-        for reg_name in ("pfx/system.reg", "system.reg"):
-            reg_path = str(Path(prefix_path) / reg_name)
-            result = self._try_registry_file(
-                reg_path,
-                install_section_pattern,
-                space_id,
-                install_id,
-                prefix_path,
-                known_name,
-                check_install_state,
-            )
-            if result is not None:
-                return result
-        return None
-
-    @staticmethod
-    def _build_registry_pattern(install_id: str) -> re.Pattern[str]:
-        """Build registry pattern."""
-        return re.compile(
-            r"\[Software\\\\(?:Wow6432Node\\\\)?"
-            r"Ubisoft\\\\Launcher\\\\Installs\\\\" + re.escape(install_id) + r"\]"
-            r'[^\[]*?"InstallDir"\s*=\s*"([^"]*)"',
-            re.DOTALL,
-        )
-
-    def _try_registry_file(
-        self,
-        reg_path: str,
-        pattern: re.Pattern[str],
-        space_id: str,
-        install_id: str,
-        prefix_path: str,
-        known_name: str,
-        check_install_state: Callable[[str], bool],
-    ) -> dict[str, Any] | None:
-        """Try registry file."""
-        reg_p = Path(reg_path)
-        if not reg_p.is_file():
-            return None
-        try:
-            reg_content = reg_p.read_text(
-                encoding="utf-8",
-                errors="replace",
-            )
-        except OSError:
-            return None
-        for match in pattern.finditer(reg_content):
-            install_dir_raw = match.group(1).replace("\\\\", "/")
-            linux_path = wine_path_to_linux(
-                install_dir_raw,
-                prefix_path,
-            )
-            if not self._validate_registry_install(
-                linux_path,
-                check_install_state,
-            ):
+        install_ids = self._parent._id_map.install_id_candidates(space_id)
+        for linux_path in registry_install_dirs(prefix_path, install_ids):
+            if not self._validate_registry_install(linux_path, check_install_state):
                 continue
-            assert linux_path is not None
             logger.info(
-                "[UbisoftLibrary] method 4: registry InstallDir for %s: %s",
-                install_id,
+                "[UbisoftLibrary] registry InstallDir for %s: %s",
+                space_id,
                 linux_path[:80],
             )
             result = self.build_install_info(
@@ -274,11 +211,7 @@ class _DetectionCascade:
                 linux_path,
                 known_name or Path(linux_path).name,
             )
-            write_marker_sync(
-                linux_path,
-                space_id,
-                result["title"],
-            )
+            write_marker_sync(linux_path, space_id, result["title"])
             return result
         return None
 
@@ -293,7 +226,11 @@ class _DetectionCascade:
         state_file = str(
             Path(linux_path) / "uplay_install.state",
         )
-        return check_install_state(state_file) or looks_like_game_install(linux_path)
+        if staging_has_files(linux_path):
+            return False
+        return check_install_state(state_file) or bool(
+            _find_game_executable(linux_path),
+        )
 
     def build_install_info(
         self,

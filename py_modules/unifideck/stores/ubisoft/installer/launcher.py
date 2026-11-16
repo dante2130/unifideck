@@ -68,10 +68,10 @@ class _LauncherInstall:
             except UpcLaunchEnvBuildError as e:
                 return Result(success=False, error=e.error_code)
             self._parent._session.inject_into_prefix(prefix_path)
-            launch_id = self._parent._id_map.resolve_launch_id(
-                game_id,
+            install_id = next(
+                iter(self._parent._id_map.install_id_candidates(game_id)), None,
             )
-            launch_url = f"uplay://install/{launch_id}" if launch_id else ""
+            launch_url = f"uplay://install/{install_id}" if install_id else ""
             cmd = [
                 launch_env.python_bin,
                 launch_env.umu_run,

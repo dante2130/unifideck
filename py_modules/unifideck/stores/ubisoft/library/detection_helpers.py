@@ -22,9 +22,12 @@ import contextlib
 import datetime as dt
 import json
 import logging
+import re
 from collections.abc import Iterator
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+from unifideck.stores.shared.wine_path import wine_path_to_linux
 
 if TYPE_CHECKING:
     from .detection import _InstallDetector
@@ -119,6 +122,38 @@ def in_prefix_game_roots(prefix_path: str) -> list[str]:
         str(prefix / _IN_PREFIX_GAMES_PATH),
         str(prefix / "pfx" / _IN_PREFIX_GAMES_PATH),
     ]
+
+def registry_install_dirs(prefix_path: str, install_ids: tuple[str, ...]) -> Iterator[str]:
+    """Read Ubisoft Connect's InstallDir for a specific game in either Wine layout."""
+    if not install_ids:
+        return
+    ids = "|".join(re.escape(install_id) for install_id in install_ids)
+    pattern = re.compile(
+        r'\[Software\\\\(?:Wow6432Node\\\\)?Ubisoft\\\\Launcher'
+        r'\\\\Installs\\\\' + r'(?:' + ids + r')\]'
+        r'[^\[]*?"InstallDir"\s*=\s*"([^"]*)"',
+        re.IGNORECASE,
+    )
+    for reg_name in ("pfx/system.reg", "system.reg"):
+        try:
+            registry = (Path(prefix_path) / reg_name).read_text(
+                encoding="utf-8", errors="replace",
+            )
+        except OSError:
+            continue
+        for match in pattern.finditer(registry):
+            path = wine_path_to_linux(match[1].replace("\\\\", "/"), prefix_path)
+            if path:
+                yield path
+
+
+def staging_has_files(install_dir: str) -> bool | None:
+    """Return whether Ubisoft Connect's staging directory contains entries."""
+    try:
+        return any((Path(install_dir) / UPC_STAGING_DIR).iterdir())
+    except OSError:
+        return None
+
 
 def _in_skipped_dir(exe_path: Path, install_path: str) -> bool:
     """True when *exe_path* sits under a directory we must never launch from.
