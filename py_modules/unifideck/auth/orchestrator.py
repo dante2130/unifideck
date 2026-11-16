@@ -36,6 +36,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from unifideck.auth.sign_in_cookies import clear_sign_in_cookies, sign_in_sites
 from unifideck.auth.url_file import write_url_file_atomically
 from unifideck.core.types import AuthResult, Events
 
@@ -43,7 +44,7 @@ if TYPE_CHECKING:
     from unifideck.event_bus.event_bus import EventBus
 
     from .browser import OAuthBrowserMonitor
-    from .browser_types import ContentCapture
+    from .browser_types import ContentCapture, RedirectIntercept
     # Type aliases for the store-specific callbacks. Keeping them
     # explicit makes the contract between the orchestrator and its
     # callers obvious at the type level.
@@ -115,6 +116,7 @@ class AuthOrchestrator:
         write_url_file: str | None = None,
         background: bool = False,
         content: ContentCapture | None = None,
+        intercept: RedirectIntercept | None = None,
     ) -> AuthResult:
         """Execute the CDP OAuth flow (blocking or background).
 
@@ -145,6 +147,9 @@ class AuthOrchestrator:
             return url_or_failure
         url = url_or_failure
 
+        # A fresh login form, whatever the store: its sites come from the flow itself.
+        await clear_sign_in_cookies(sign_in_sites(url, allowed_uris, content, intercept))
+
         # Step 2: optionally persist the URL for the shell launcher.
         if write_url_file:
             persist_failure = await self._persist_url_if_needed(
@@ -161,6 +166,7 @@ class AuthOrchestrator:
                 exchange_code=exchange_code,
                 deadline=deadline,
                 content=content,
+                intercept=intercept,
             )
         return await self._await_redirect_and_exchange(
             url=url,
@@ -168,6 +174,7 @@ class AuthOrchestrator:
             exchange_code=exchange_code,
             deadline=deadline,
             content=content,
+            intercept=intercept,
         )
 
     async def _acquire_auth_url(
@@ -252,6 +259,7 @@ class AuthOrchestrator:
         deadline: float,
         *,
         content: ContentCapture | None = None,
+        intercept: RedirectIntercept | None = None,
     ) -> AuthResult:
         """Wait for the CDP redirect and exchange the code.
 
@@ -275,6 +283,7 @@ class AuthOrchestrator:
                 allowed_uris=allowed_uris,
                 timeout=deadline,
                 content=content,
+                intercept=intercept,
             )
         except asyncio.CancelledError:
             logger.info(
@@ -315,7 +324,7 @@ class AuthOrchestrator:
             )
         # Close the OAuth tab before the exchange so the user
         # sees the browser disappear quickly on success.
-        await self._close_tab_safely(capture.redirect_url)
+        await self._close_tab_safely(capture.page_url or capture.redirect_url)
         return await self._finalize_auth_exchange(
             code, url, exchange_code,
         )
@@ -373,6 +382,7 @@ class AuthOrchestrator:
         deadline: float,
         *,
         content: ContentCapture | None = None,
+        intercept: RedirectIntercept | None = None,
     ) -> AuthResult:
         """Create the asyncio task for background mode and return.
 
@@ -393,6 +403,7 @@ class AuthOrchestrator:
                     exchange_code=exchange_code,
                     deadline=deadline,
                     content=content,
+                    intercept=intercept,
                 )
             except asyncio.CancelledError:
                 # task cancelled mid-flight; swallow to let shutdown proceed

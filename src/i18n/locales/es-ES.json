@@ -410,7 +410,6 @@
       "installingPrerequisites": "Requisitos…",
       "installingRedistMessage": "Instalando",
       "installingRedistributables": "Instalando libs.",
-      "installingUbisoftMessage": "Instala allí",
       "invalidCountry": "País no válido",
       "launcherError": "No arrancó",
       "nativeExitedEarly": "Cierre inmediato",
@@ -483,6 +482,7 @@
       "xboxPcOnly": "Solo juegos PC",
       "xboxPcSignInNeeded": "Vuelve a entrar"
     },
+    "ubisoftLibraryUnreadableMessage": "Juegos ilegibles",
     "ubisoftSignInExpiredMessage": "Vuelve a entrar",
     "uninstallDone": "Desinstalado",
     "updateQueued": "En cola",
@@ -701,7 +701,8 @@
     "microsoft": "Microsoft",
     "battlenet": "Battle.net",
     "gamevault": "GameVault",
-    "itch": "itch.io"
+    "itch": "itch.io",
+    "ea": "EA"
   },
   "unifiedLibrary": {
     "error": "Error de Unifideck",
@@ -921,8 +922,8 @@
       "changeLocation": "Cambiar ubicación",
       "resetLocation": "Restablecer a automática",
       "statusInSync": "Guardados en la nube al día",
-      "xboxWaitingUpload": "Pendiente de subir",
-      "xboxWaitingLaunch": "Esperando el inicio",
+      "statusWaitingUpload": "Pendiente de subir",
+      "statusWaitingLaunch": "Esperando el inicio",
       "checkConnection": "Comprueba la conexión"
     },
     "exe": {

@@ -209,9 +209,14 @@ async def warmup_install_prefix(
     install_path: str,
     *,
     cloud_svc: Any = None,
+    proton_tool: str | None = None,
 ) -> None:
-    """Run the full first-run prefix setup (+ cloud pull) at install time."""
+    """Run the full first-run prefix setup (+ cloud pull) at install time.
+
+    ``proton_tool``: the Proton a fresh install is set up on (``pick_new_install_proton``).
+    """
     from unifideck.launcher.frontend_bridge import suppress_launcher_toasts
+    from unifideck.launcher.proton.store_setup import run_store_prefix_setup
 
     key = f"{store}:{game_id}"
     logger.info("[prefix_warmup] starting install-time prefix setup for %s", key)
@@ -225,6 +230,7 @@ async def warmup_install_prefix(
     _reap_stale_prefix_wineserver(game_id)
 
     ctx, state = _build_launch_context(store, game_id, Path(install_path))
+    ctx.proton_tool = proton_tool
 
     # Steps 1+2 reuse the launch path's prefix-init / compat / GE-download /
     # umu-runtime helpers, all of which toast launch progress. During a
@@ -232,6 +238,10 @@ async def warmup_install_prefix(
     # "Setting up game…"), so suppress them for the whole setup block.
     with suppress_launcher_toasts():
         await _setup_prefix_with_ge_retry(ctx, state, key)
+        # Store-specific finishing (EA's Touchup). A failure here is retried
+        # before the first launch, which also reports it.
+        if not await run_store_prefix_setup(ctx, state, _user_session_env()):
+            logger.warning("[prefix_warmup] store prefix step failed for %s; the launch retries it", key)
 
     # 3: pull cloud saves now that drive_c exists. The user opted into pulling
     # at install (in addition to the on-launch pull). Never fatal — a missing
@@ -259,6 +269,7 @@ def make_prefix_warmup(
     async def _warmup(item: DownloadItem) -> None:
         await warmup_install_prefix(
             item.store, item.game_id, item.install_path, cloud_svc=cloud_svc,
+            proton_tool=item.proton_tool,
         )
 
     return _warmup

@@ -410,7 +410,6 @@
       "installingPrerequisites": "Ön koşullar…",
       "installingRedistMessage": "Ekleniyor…",
       "installingRedistributables": "Ekleniyor…",
-      "installingUbisoftMessage": "Uygulamadan kur",
       "invalidCountry": "Geçersiz ülke",
       "launcherError": "Başlatılamadı",
       "nativeExitedEarly": "Hemen kapandı",
@@ -483,6 +482,7 @@
       "xboxPcOnly": "Sadece PC oyunu",
       "xboxPcSignInNeeded": "Tekrar giriş yap"
     },
+    "ubisoftLibraryUnreadableMessage": "Okuma hatası",
     "ubisoftSignInExpiredMessage": "Tekrar giriş yap",
     "uninstallDone": "Kaldırıldı",
     "updateQueued": "Sıraya eklendi",
@@ -701,7 +701,8 @@
     "microsoft": "Microsoft",
     "battlenet": "Battle.net",
     "gamevault": "GameVault",
-    "itch": "itch.io"
+    "itch": "itch.io",
+    "ea": "EA"
   },
   "unifiedLibrary": {
     "error": "Unifideck Hatası",
@@ -921,8 +922,8 @@
       "changeLocation": "Konumu değiştir",
       "resetLocation": "Otomatiğe sıfırla",
       "statusInSync": "Bulut kayıtları güncel",
-      "xboxWaitingUpload": "Yükleme bekliyor",
-      "xboxWaitingLaunch": "Başlatma bekleniyor",
+      "statusWaitingUpload": "Yükleme bekliyor",
+      "statusWaitingLaunch": "Başlatma bekleniyor",
       "checkConnection": "Bağlantıyı kontrol edin"
     },
     "exe": {

@@ -410,7 +410,6 @@
       "installingPrerequisites": "Установка…",
       "installingRedistMessage": "Установка…",
       "installingRedistributables": "Установка…",
-      "installingUbisoftMessage": "Через клиент",
       "invalidCountry": "Неверная страна",
       "launcherError": "Не запустилась",
       "nativeExitedEarly": "Сразу закрылась",
@@ -483,6 +482,7 @@
       "xboxPcOnly": "Только игры ПК",
       "xboxPcSignInNeeded": "Войдите снова"
     },
+    "ubisoftLibraryUnreadableMessage": "Ошибка чтения",
     "ubisoftSignInExpiredMessage": "Войдите снова",
     "uninstallDone": "Удалено",
     "updateQueued": "В очереди",
@@ -701,7 +701,8 @@
     "microsoft": "Microsoft",
     "battlenet": "Battle.net",
     "gamevault": "GameVault",
-    "itch": "itch.io"
+    "itch": "itch.io",
+    "ea": "EA"
   },
   "unifiedLibrary": {
     "error": "Ошибка Unifideck",
@@ -921,8 +922,8 @@
       "changeLocation": "Изменить папку",
       "resetLocation": "Сбросить на автоматическую",
       "statusInSync": "Облачные сохранения актуальны",
-      "xboxWaitingUpload": "Ожидает загрузки",
-      "xboxWaitingLaunch": "Ожидает запуска",
+      "statusWaitingUpload": "Ожидает загрузки",
+      "statusWaitingLaunch": "Ожидает запуска",
       "checkConnection": "Проверьте подключение"
     },
     "exe": {

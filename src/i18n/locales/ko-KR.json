@@ -410,7 +410,6 @@
       "installingPrerequisites": "필수 구성요소…",
       "installingRedistMessage": "런타임 추가 중…",
       "installingRedistributables": "라이브러리 추가 중",
-      "installingUbisoftMessage": "앱에서 설치하세요",
       "invalidCountry": "잘못된 국가",
       "launcherError": "시작할 수 없음",
       "nativeExitedEarly": "바로 종료됨",
@@ -483,6 +482,7 @@
       "xboxPcOnly": "PC 게임만",
       "xboxPcSignInNeeded": "다시 로그인하세요"
     },
+    "ubisoftLibraryUnreadableMessage": "게임을 읽을 수 없음",
     "ubisoftSignInExpiredMessage": "다시 로그인하세요",
     "uninstallDone": "제거됨",
     "updateQueued": "대기열에 추가됨",
@@ -701,7 +701,8 @@
     "microsoft": "Microsoft",
     "battlenet": "Battle.net",
     "gamevault": "GameVault",
-    "itch": "itch.io"
+    "itch": "itch.io",
+    "ea": "EA"
   },
   "unifiedLibrary": {
     "error": "Unifideck 오류",
@@ -921,8 +922,8 @@
       "changeLocation": "위치 변경",
       "resetLocation": "자동으로 재설정",
       "statusInSync": "클라우드 저장 최신 상태",
-      "xboxWaitingUpload": "업로드 대기 중",
-      "xboxWaitingLaunch": "실행 대기 중",
+      "statusWaitingUpload": "업로드 대기 중",
+      "statusWaitingLaunch": "실행 대기 중",
       "checkConnection": "연결을 확인하세요"
     },
     "exe": {

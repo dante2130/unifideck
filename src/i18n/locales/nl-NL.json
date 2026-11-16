@@ -410,7 +410,6 @@
       "installingPrerequisites": "Vereisten…",
       "installingRedistMessage": "Runtimes erbij…",
       "installingRedistributables": "Libraries erbij",
-      "installingUbisoftMessage": "Gebruik de app",
       "invalidCountry": "Ongeldig land",
       "launcherError": "Starten mislukt",
       "nativeExitedEarly": "Direct gestopt",
@@ -483,6 +482,7 @@
       "xboxPcOnly": "Alleen pc-games",
       "xboxPcSignInNeeded": "Meld je weer aan"
     },
+    "ubisoftLibraryUnreadableMessage": "Games onleesbaar",
     "ubisoftSignInExpiredMessage": "Meld je weer aan",
     "uninstallDone": "Verwijderd",
     "updateQueued": "In de wachtrij",
@@ -701,7 +701,8 @@
     "microsoft": "Microsoft",
     "battlenet": "Battle.net",
     "gamevault": "GameVault",
-    "itch": "itch.io"
+    "itch": "itch.io",
+    "ea": "EA"
   },
   "unifiedLibrary": {
     "error": "Unifideck-fout",
@@ -921,8 +922,8 @@
       "changeLocation": "Locatie wijzigen",
       "resetLocation": "Terug naar automatisch",
       "statusInSync": "Cloudopslag up-to-date",
-      "xboxWaitingUpload": "Wacht op upload",
-      "xboxWaitingLaunch": "Wacht op start",
+      "statusWaitingUpload": "Wacht op upload",
+      "statusWaitingLaunch": "Wacht op start",
       "checkConnection": "Controleer de verbinding"
     },
     "exe": {

@@ -410,7 +410,6 @@
       "installingPrerequisites": "必須項目を導入中…",
       "installingRedistMessage": "ランタイム追加中…",
       "installingRedistributables": "ライブラリ追加中",
-      "installingUbisoftMessage": "アプリから導入",
       "invalidCountry": "無効な国",
       "launcherError": "起動できません",
       "nativeExitedEarly": "すぐ終了しました",
@@ -483,6 +482,7 @@
       "xboxPcOnly": "PCゲームのみ",
       "xboxPcSignInNeeded": "再ログインが必要です"
     },
+    "ubisoftLibraryUnreadableMessage": "ゲームを読み込めません",
     "ubisoftSignInExpiredMessage": "再ログインしてください",
     "uninstallDone": "アンインストールしました",
     "updateQueued": "待機列に追加しました",
@@ -701,7 +701,8 @@
     "microsoft": "Microsoft",
     "battlenet": "Battle.net",
     "gamevault": "GameVault",
-    "itch": "itch.io"
+    "itch": "itch.io",
+    "ea": "EA"
   },
   "unifiedLibrary": {
     "error": "Unifideck エラー",
@@ -921,8 +922,8 @@
       "changeLocation": "場所を変更",
       "resetLocation": "自動に戻す",
       "statusInSync": "クラウドセーブは最新です",
-      "xboxWaitingUpload": "アップロード待ち",
-      "xboxWaitingLaunch": "起動待ち",
+      "statusWaitingUpload": "アップロード待ち",
+      "statusWaitingLaunch": "起動待ち",
       "checkConnection": "接続を確認してください"
     },
     "exe": {

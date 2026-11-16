@@ -410,7 +410,6 @@
       "installingPrerequisites": "المتطلبات…",
       "installingRedistMessage": "إضافة المكتبات…",
       "installingRedistributables": "جارٍ إضافة مكتبات",
-      "installingUbisoftMessage": "ثبّت من التطبيق",
       "invalidCountry": "دولة غير صالحة",
       "launcherError": "تعذّر البدء",
       "nativeExitedEarly": "أُغلقت فورًا",
@@ -483,6 +482,7 @@
       "xboxPcOnly": "ألعاب PC فقط",
       "xboxPcSignInNeeded": "سجّل الدخول مجددًا"
     },
+    "ubisoftLibraryUnreadableMessage": "تعذّرت القراءة",
     "ubisoftSignInExpiredMessage": "سجّل الدخول مجددًا",
     "uninstallDone": "تمت الإزالة",
     "updateQueued": "أُضيف للانتظار",
@@ -701,7 +701,8 @@
     "microsoft": "Microsoft",
     "battlenet": "Battle.net",
     "gamevault": "GameVault",
-    "itch": "itch.io"
+    "itch": "itch.io",
+    "ea": "EA"
   },
   "unifiedLibrary": {
     "error": "خطأ في Unifideck",
@@ -921,8 +922,8 @@
       "changeLocation": "تغيير الموقع",
       "resetLocation": "إعادة التعيين إلى تلقائي",
       "statusInSync": "الحفظ السحابي محدَّث",
-      "xboxWaitingUpload": "في انتظار الرفع",
-      "xboxWaitingLaunch": "في انتظار التشغيل",
+      "statusWaitingUpload": "في انتظار الرفع",
+      "statusWaitingLaunch": "في انتظار التشغيل",
       "checkConnection": "تحقق من الاتصال"
     },
     "exe": {

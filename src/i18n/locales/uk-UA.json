@@ -410,7 +410,6 @@
       "installingPrerequisites": "Залежності…",
       "installingRedistMessage": "Додавання…",
       "installingRedistributables": "Додавання файлів",
-      "installingUbisoftMessage": "Через додаток",
       "invalidCountry": "Невірна країна",
       "launcherError": "Не запустилась",
       "nativeExitedEarly": "Одразу закрилась",
@@ -483,6 +482,7 @@
       "xboxPcOnly": "Лише ігри для ПК",
       "xboxPcSignInNeeded": "Увійдіть знову"
     },
+    "ubisoftLibraryUnreadableMessage": "Помилка читання",
     "ubisoftSignInExpiredMessage": "Увійдіть знову",
     "uninstallDone": "Видалено",
     "updateQueued": "Додано в чергу",
@@ -701,7 +701,8 @@
     "microsoft": "Microsoft",
     "battlenet": "Battle.net",
     "gamevault": "GameVault",
-    "itch": "itch.io"
+    "itch": "itch.io",
+    "ea": "EA"
   },
   "unifiedLibrary": {
     "error": "Помилка Unifideck",
@@ -921,8 +922,8 @@
       "changeLocation": "Змінити розташування",
       "resetLocation": "Скинути на автоматичне",
       "statusInSync": "Хмарні збереження актуальні",
-      "xboxWaitingUpload": "Очікує вивантаження",
-      "xboxWaitingLaunch": "Очікує запуску",
+      "statusWaitingUpload": "Очікує вивантаження",
+      "statusWaitingLaunch": "Очікує запуску",
       "checkConnection": "Перевірте з'єднання"
     },
     "exe": {

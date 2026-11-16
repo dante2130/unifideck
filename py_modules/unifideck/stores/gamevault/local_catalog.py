@@ -27,7 +27,14 @@ from pathlib import Path
 
 from unifideck.core.types import Game
 
-from .filename import ParsedName, is_indexable, parse_archive_name, version_sort_key
+from . import variants
+from .filename import (
+    ParsedName,
+    extract_tags,
+    is_indexable,
+    parse_archive_name,
+    version_sort_key,
+)
 from .library import GameVaultFetchError
 from .sources import AcquiredArchive, safe_dir_name
 
@@ -191,6 +198,9 @@ class LocalVaultCatalog:
                     "game_type": entry.parsed.game_type or "",
                     "is_installer": entry.parsed.is_installer,
                     "versions": list(entry.all_versions),
+                    **variants.variant_metadata(
+                        entry.parsed, extract_tags(entry.path.name),
+                    ),
                 },
             )
             for entry in entries.values()

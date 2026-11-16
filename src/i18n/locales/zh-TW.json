@@ -410,7 +410,6 @@
       "installingPrerequisites": "安裝必要元件…",
       "installingRedistMessage": "正在加入執行庫…",
       "installingRedistributables": "正在加入程式庫",
-      "installingUbisoftMessage": "請在應用程式內安裝",
       "invalidCountry": "國家無效",
       "launcherError": "無法啟動",
       "nativeExitedEarly": "隨即結束",
@@ -483,6 +482,7 @@
       "xboxPcOnly": "僅限 PC 遊戲",
       "xboxPcSignInNeeded": "請重新登入"
     },
+    "ubisoftLibraryUnreadableMessage": "無法讀取遊戲",
     "ubisoftSignInExpiredMessage": "請重新登入",
     "uninstallDone": "已解除安裝",
     "updateQueued": "已加入佇列",
@@ -701,7 +701,8 @@
     "microsoft": "Microsoft",
     "battlenet": "Battle.net",
     "gamevault": "GameVault",
-    "itch": "itch.io"
+    "itch": "itch.io",
+    "ea": "EA"
   },
   "unifiedLibrary": {
     "error": "Unifideck 錯誤",
@@ -961,8 +962,8 @@
       "changeLocation": "變更位置",
       "resetLocation": "重設為自動",
       "statusInSync": "雲端存檔已同步",
-      "xboxWaitingUpload": "等待上傳",
-      "xboxWaitingLaunch": "等待啟動",
+      "statusWaitingUpload": "等待上傳",
+      "statusWaitingLaunch": "等待啟動",
       "checkConnection": "請檢查網路連線"
     },
     "exe": {
