@@ -20,7 +20,6 @@ from unifideck.launcher.xbox_pc.errors import (
     GAME_ARGS_IGNORED_KEY,
     LAUNCH_FAILED_KEY,
     REASON_TOAST_KEYS,
-    STARTING_KEY,
     XboxPcLaunchError,
     toast_key,
 )
@@ -130,7 +129,7 @@ async def test_a_clean_run_brackets_the_game_with_launch_events(monkeypatch: pyt
     assert isinstance(bus, _Bus)
     names = bus.names()
     assert names.index(Events.GAME_LAUNCHED.value) < names.index(Events.GAME_STOPPED.value)
-    assert bus.stage_keys() == [STARTING_KEY]
+    assert bus.stage_keys() == []
 
 
 @pytest.mark.asyncio

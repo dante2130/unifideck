@@ -347,23 +347,13 @@ async def battlenet_launch(plan: ProtonLaunchPlan) -> int:
             plan, "battlenetFamilyMissing", f"No Battle.net family code known for {uid}",
             uid=uid,
         )
-    _announce(plan, target.family)
+    battlenet_wc3.apply_wc3_crypt32_fix(plan, target.family)
     client_exe = await _bring_up_client(plan)
     await _require_signed_in(plan)
     pid, before = await _start_game(plan, client_exe, uid, target)
     await _await_session_end(plan, pid, before)
     plan.state.game_exit_code = 0
     return 0
-
-
-def _announce(plan: ProtonLaunchPlan, family: str) -> None:
-    """Tell the user the game is starting; warn early about a known W3 trap."""
-    launcher_toast(
-        "toasts.launcher.startingBattlenetGame",
-        i18n_title_key="toasts.header.battlenet",
-        game_title=resolve_title(plan.context.game_key),
-    )
-    battlenet_wc3.apply_wc3_crypt32_fix(plan, family)
 
 
 async def _start_game(

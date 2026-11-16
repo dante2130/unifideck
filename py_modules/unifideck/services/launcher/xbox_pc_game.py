@@ -19,7 +19,6 @@ from typing import TYPE_CHECKING, Any
 from unifideck.core.types import Result
 from unifideck.launcher.xbox_pc.errors import (
     GAME_ARGS_IGNORED_KEY,
-    STARTING_KEY,
     XboxPcLaunchError,
     toast_action,
     toast_header,
@@ -129,7 +128,6 @@ async def run_xbox_pc_game(
         # A forced compatibility tool wraps the launcher in pressure-vessel,
         # where the memfd handoff and the host Steam root do not hold.
         return await _refuse(svc, ctx, XboxPcLaunchError("compat_tool_wrapped"))
-    await _notice(svc, ctx, STARTING_KEY, {})
     await _warn_dropped_args(svc, ctx, state)
     try:
         rc = await _run_session(svc, ctx)

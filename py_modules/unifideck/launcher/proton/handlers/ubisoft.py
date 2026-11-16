@@ -145,11 +145,6 @@ async def ubisoft_launch(plan: ProtonLaunchPlan) -> int:
         "[launcher.proton.ubisoft] launching %s",
         plan.context.game_key,
     )
-    launcher_toast(
-        "toasts.launcher.startingUbisoftGame",
-        i18n_title_key="toasts.header.ubisoft",
-        game_title=resolve_title(plan.context.game_key),
-    )
     await _apply_epic_wrapper_fix(plan)
     if not await _inject_registry_keys(plan):
         logger.warning(
@@ -231,7 +226,6 @@ async def ubisoft_auth_launch(plan: ProtonLaunchPlan) -> int:
         "[launcher.proton.ubisoft] auth launch — opening UPC in %s",
         plan.prefix_path,
     )
-    # NOT a game launch — the generic "Launching Game" confused users.
     # Shared with Battle.net so the two clients say the same thing, and
     # worded by action so a cart press doesn't say "sign in".
     wrapper_clients.announce_client_open("ubisoft")

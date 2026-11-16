@@ -57,7 +57,6 @@ REASON_TOAST_KEYS: dict[str, str] = {
 }
 
 #: Non-error notices shown while a launch goes on.
-STARTING_KEY = _PREFIX + "startingXboxPcGame"
 LANGUAGE_UNAVAILABLE_KEY = _PREFIX + "xboxPcLanguageUnavailable"
 GAME_ARGS_IGNORED_KEY = _PREFIX + "xboxPcGameArgsIgnored"
 VC_RUNTIME_INSTALLING_KEY = _PREFIX + "xboxPcInstallingVcRuntime"

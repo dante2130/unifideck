@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from unifideck.launcher.frontend_bridge import launcher_toast
 from unifideck.launcher.proton.infrastructure.core import ProtonLaunchPlan
 from unifideck.launcher.proton.infrastructure.umu_runtime import run_umu_with_retry
 from unifideck.launcher.types.errors import GameFailedError, UmuRuntimeError
@@ -100,18 +99,8 @@ async def generic_launch(plan: ProtonLaunchPlan) -> int:
     """Generic launch."""
     store = plan.context.store
     if store == "gog":
-        launcher_toast(
-            "toasts.launcher.startingGogGame",
-            i18n_title_key="toasts.header.gog",
-            game_title=plan.context.game_key,
-        )
         rc = await _gog_launch(plan)
     elif store == "amazon":
-        launcher_toast(
-            "toasts.launcher.startingAmazonGame",
-            i18n_title_key="toasts.header.amazon",
-            game_title=plan.context.game_key,
-        )
         rc = await _amazon_launch(plan)
     else:
         rc = await _raw_exe_launch(plan)
