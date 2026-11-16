@@ -171,7 +171,7 @@ async def test_install_launch_uses_uplay_install_deeplink(
     tmp_path, monkeypatch, _quiet_toast,
 ):
     """``ubisoft_install_launch`` points UPC at the title's install
-    deeplink when the launch id resolves."""
+    deeplink using the install ID when IDs differ."""
     captured: dict[str, object] = {}
 
     async def fake_umu(argv, *, env=None, on_start=None, **kw):
@@ -179,7 +179,12 @@ async def test_install_launch_uses_uplay_install_deeplink(
         return 0
 
     monkeypatch.setattr(h, "run_umu_with_retry", fake_umu)
-    monkeypatch.setattr(h, "_uplay_id_from_id_map", lambda _sid: "12345")
+    id_map = tmp_path / "ubisoft_id_map.json"
+    id_map.write_text(
+        '{"100": {"install_id": "12345", "ubisoftconnect_game_id": "67890"}}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(h, "ID_MAP_FILE", id_map)
     monkeypatch.delenv("UPLAY_ID", raising=False)
     upc = tmp_path / _UPC_REL
     upc.parent.mkdir(parents=True, exist_ok=True)
@@ -210,7 +215,7 @@ async def test_install_launch_bare_without_id(
         return 0
 
     monkeypatch.setattr(h, "run_umu_with_retry", fake_umu)
-    monkeypatch.setattr(h, "_uplay_id_from_id_map", lambda _sid: None)
+    monkeypatch.setattr(h, "_uplay_id_from_id_map", lambda _sid, **_kwargs: None)
     monkeypatch.delenv("UPLAY_ID", raising=False)
     upc = tmp_path / _UPC_REL
     upc.parent.mkdir(parents=True, exist_ok=True)

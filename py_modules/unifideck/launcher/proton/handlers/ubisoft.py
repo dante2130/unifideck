@@ -27,15 +27,15 @@ from unifideck.launcher.types.errors import GameFailedError, UmuRuntimeError
 logger = logging.getLogger(__name__)
 
 
-def _uplay_id_from_id_map(space_id: str) -> str | None:
-    """Resolve the ``uplay://`` launch id for ``space_id`` from the id_map.
+def _uplay_id_from_id_map(space_id: str, *, install: bool = False) -> str | None:
+    """Resolve the ``uplay://`` game id for ``space_id`` from the id_map.
 
     Steam can't hand env vars to the launcher (it only forwards launch
     options as argv, and the dispatcher promotes ``UNIFIDECK_*`` tokens
     only), so ``UPLAY_ID`` is almost never set. Fall back to the id_map
     the backend persists, preferring the leveldb-sourced
     ``ubisoftconnect_game_id`` — the value ``uplay://launch/{id}/0``
-    actually expects — then ``launch_id`` / ``install_id``. Returns
+    actually expects. Install deeplinks prefer the configuration install ID. Returns
     ``None`` (caller drops to the Legendary path) on any read error.
     """
     try:
@@ -45,13 +45,18 @@ def _uplay_id_from_id_map(space_id: str) -> str | None:
     entry = data.get(space_id) if isinstance(data, dict) else None
     if not isinstance(entry, dict):
         return None
-    for key in ("ubisoftconnect_game_id", "launch_id", "install_id"):
-        value = entry.get(key)
+    keys = (
+        ("install_id", "ubisoftconnect_game_id", "launch_id")
+        if install
+        else ("ubisoftconnect_game_id", "launch_id", "install_id")
+    )
+    for key in keys:
+        value = str(entry.get(key, ""))
         # UUID-only titles record "0" (no numeric uplay id resolved yet);
         # ``uplay://launch/0/0`` opens UPC's home, not the game, so treat
         # "0" as missing and fall through to the next candidate.
-        if value and str(value) != "0":
-            return str(value)
+        if value.isascii() and value.isdecimal() and value.lstrip("0"):
+            return value
     return None
 async def _apply_epic_wrapper_fix(plan: ProtonLaunchPlan) -> None:
     """Apply EPIC wrapper fix."""
@@ -343,7 +348,7 @@ async def ubisoft_install_launch(plan: ProtonLaunchPlan) -> int:
             context={"store": "ubisoft", "prefix": str(plan.prefix_path)},
         )
     uplay_id = os.environ.get("UPLAY_ID") or _uplay_id_from_id_map(
-        plan.context.game_id,
+        plan.context.game_id, install=True,
     )
     argv = [str(plan.python_bin), str(plan.umu_wrapper), str(upc_exe)]
     if uplay_id:

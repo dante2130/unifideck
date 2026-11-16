@@ -42,32 +42,16 @@ from typing import Any
 from unifideck.stores.shared.installed_size import dir_allocated_bytes
 from unifideck.stores.ubisoft.library.detection_helpers import (
     UPC_STAGING_DIR,
+    in_prefix_game_roots,
     looks_like_game_install,
+    registry_install_dirs,
+    staging_has_files,
 )
 
 logger = logging.getLogger(__name__)
 
 STORE_ID = "ubisoft"
 CLIENT_LABEL = "Ubisoft Connect"
-
-_UPC_GAMES_REL = str(
-    Path("drive_c") / "Program Files (x86)" / "Ubisoft"
-    / "Ubisoft Game Launcher" / "games",
-)
-
-
-def upc_game_dirs(prefix_path: str) -> tuple[str, str]:
-    """Both spellings of UPC's in-prefix ``games/`` directory.
-
-    umu makes ``pfx`` a self-symlink to the prefix, so the same directory is
-    reachable by two paths and which one appears depends on how the prefix was
-    created. Watching only one of them missed real installs.
-    """
-    return (
-        str(Path(prefix_path) / _UPC_GAMES_REL),
-        str(Path(prefix_path) / "pfx" / _UPC_GAMES_REL),
-    )
-
 
 def _listing(path: str) -> set[str]:
     """Entry names in ``path``; empty when it does not exist yet.
@@ -100,7 +84,7 @@ def _has_exe_outside_staging(install_dir: str) -> bool:
         return False
 
 class UbisoftInstallProbe:
-    """Detects a UPC install by diffing directory listings.
+    """Detects a UPC install through its registry entry or a new game folder.
 
     Two locations are watched, in priority order: the ``install_base`` we asked
     UPC to use, then UPC's own per-prefix ``games/`` directories — the fallback
@@ -111,24 +95,30 @@ class UbisoftInstallProbe:
     store = STORE_ID
     client_label = CLIENT_LABEL
 
-    def __init__(self, install_base: str, prefix_path: str) -> None:
+    def __init__(
+        self, install_base: str, prefix_path: str, install_ids: tuple[str, ...] = (),
+    ) -> None:
         self._install_base = install_base
         self._prefix_path = prefix_path
+        self._install_ids = install_ids
 
     def snapshot(self) -> dict[str, set[str]]:
         """Baseline every watched directory."""
-        watched = (self._install_base, *upc_game_dirs(self._prefix_path))
+        watched = (self._install_base, *in_prefix_game_roots(self._prefix_path))
         return {path: _listing(path) for path in watched}
 
     def detect(self, baseline: Any) -> str | None:
-        """First new directory that looks like a game install, else ``None``.
+        """Return the registered game directory or the first new game folder.
 
         ``install_base`` is checked first so the user's chosen location wins
         when UPC honoured it.
         """
+        for candidate in registry_install_dirs(self._prefix_path, self._install_ids):
+            if looks_like_game_install(candidate):
+                return candidate
         if not isinstance(baseline, dict):
             return None
-        ordered = (self._install_base, *upc_game_dirs(self._prefix_path))
+        ordered = (self._install_base, *in_prefix_game_roots(self._prefix_path))
         for path in ordered:
             found = self._new_game_dir(path, baseline.get(path, set()))
             if found:
@@ -175,10 +165,8 @@ class UbisoftInstallProbe:
         and we would be inferring its layout from a single observed install.
         The staging directory is plain filesystem state that means one thing.
         """
-        staging = Path(install_dir) / UPC_STAGING_DIR
-        try:
-            staged = any(staging.iterdir())
-        except OSError:
+        staged = staging_has_files(install_dir)
+        if staged is None:
             return None
         if staged:
             return False

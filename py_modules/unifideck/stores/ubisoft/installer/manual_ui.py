@@ -82,7 +82,9 @@ class _ManualUiInstaller:
         )
         self._session.inject_into_prefix(prefix_path)
         probe = UbisoftInstallProbe(
-            self._prepared_install_base(install_path), prefix_path,
+            self._prepared_install_base(install_path),
+            prefix_path,
+            self._id_map.install_id_candidates(game_id),
         )
         try:
             install_dir = await watch_manual_install(

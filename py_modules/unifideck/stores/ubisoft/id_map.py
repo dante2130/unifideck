@@ -121,9 +121,19 @@ class UbisoftIdMap:
     ) -> str | None:
         """Resolve install ID."""
         entry = self._cache.get(space_id, {})
-        if "ubisoftconnect_game_id" in entry:
-            return entry.get("ubisoftconnect_game_id")
+        if CONNECT_ID_KEY in entry:
+            return entry.get(CONNECT_ID_KEY)
         return entry.get("install_id")
+
+    def install_id_candidates(self, space_id: str) -> tuple[str, ...]:
+        """IDs for finding a game's install, starting with its configuration ID."""
+        entry = self._cache.get(space_id, {})
+        ids: list[str] = []
+        for key in ("install_id", CONNECT_ID_KEY, "launch_id"):
+            value = str(entry.get(key, ""))
+            if value.isascii() and value.isdecimal() and value.lstrip("0") and value not in ids:
+                ids.append(value)
+        return tuple(ids)
 
     def resolve_launch_id(
         self,

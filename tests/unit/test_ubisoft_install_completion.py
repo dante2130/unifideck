@@ -38,11 +38,16 @@ from unifideck.stores.shared.installed_size import (
     dir_allocated_bytes,
     dir_size_bytes,
 )
+from unifideck.stores.ubisoft.config import UbisoftConfig
+from unifideck.stores.ubisoft.id_map import UbisoftIdMap
 from unifideck.stores.ubisoft.installer.manual_ui_poll import UbisoftInstallProbe
+from unifideck.stores.ubisoft.library.detection import _InstallDetector
 from unifideck.stores.ubisoft.library.detection_helpers import (
     UPC_STAGING_DIR,
     find_game_executable,
 )
+
+from unifideck.stores.ubisoft.paths import UbisoftPrefixPaths
 
 SPARSE_LEN = 64 * 1024 * 1024
 REAL_WRITE = 128 * 1024
@@ -239,3 +244,44 @@ def test_exe_finder_still_picks_a_real_executable(tmp_path: Path) -> None:
 
     assert found is not None
     assert Path(found).name == "SplinterCell.exe"
+
+
+def test_manual_install_detects_registered_custom_location(tmp_path: Path) -> None:
+    config = UbisoftConfig(
+        data_dir=str(tmp_path),
+        id_map_file=str(tmp_path / "ids.json"),
+        prefixes_dir=str(tmp_path / "prefixes"),
+        default_install_base=str(tmp_path / "configured"),
+    )
+    game_id = "valhalla"
+    prefix = Path(config.prefixes_dir) / game_id
+    prefix.mkdir(parents=True)
+    (prefix / config.bootstrap_marker).touch()
+    paths = UbisoftPrefixPaths(config)
+    id_map = UbisoftIdMap(config, paths)
+    id_map.update(game_id, "13504", "13505")
+    detector = _InstallDetector(config, id_map)
+    game = tmp_path / "custom" / "Assassin's Creed Valhalla"
+    game.mkdir(parents=True)
+    (game / "ACValhalla.exe").write_bytes(b"game")
+    probe = UbisoftInstallProbe(str(tmp_path / "configured"), str(prefix), ("13504",))
+    baseline = probe.snapshot()
+
+    wine_path = "Z:" + str(game).replace("/", "\\\\")
+    (prefix / "system.reg").write_text(
+        r"[Software\\Wow6432Node\\Ubisoft\\Launcher\\Installs\\13504]"
+        + f' 123\n"InstallDir"="{wine_path}"\n',
+        encoding="utf-8",
+    )
+
+    assert probe.detect(baseline) == str(game)
+
+    staging = game / UPC_STAGING_DIR
+    staging.mkdir()
+    (staging / "pending").touch()
+    assert detector.get_installed_game_info(game_id) is None
+    (staging / "pending").unlink()
+
+    installed = detector.get_installed_game_info(game_id)
+    assert installed is not None
+    assert installed["install_path"] == str(game)
