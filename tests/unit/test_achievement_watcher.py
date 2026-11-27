@@ -83,6 +83,8 @@ async def test_session_toasts_new_unlock_once_and_records_summary(make, store: s
     watcher, toasts = make({store: inst})
 
     await watcher._on_game_launched(store=store, game_id="g1")
+    if store == "microsoft":
+        await watcher._startup_tasks["microsoft:g1"]
     await watcher._on_game_stopped(store=store, game_id="g1")
     await _drain()
 
@@ -112,6 +114,7 @@ async def test_store_error_falls_back_to_saved_baseline(make) -> None:
     await asyncio.to_thread(watcher._state.update, "microsoft", "g1", unlocked_keys={"a"})
 
     await watcher._on_game_launched(store="microsoft", game_id="g1")
+    await watcher._startup_tasks["microsoft:g1"]
     await watcher._on_game_stopped(store="microsoft", game_id="g1")
     await _drain()
     assert toasts == ["microsoft:b"]
@@ -245,7 +248,10 @@ async def test_xbox_pc_session_exports_snapshot_and_only_new_unlocks(make, tmp_p
         "unifideck.services.achievements.nexus_feed.find_install_record",
         lambda game_id: {"state": "installed", "titleId": "2A", "productId": "9PK087LNGJC5"},
     )
+    release_cover = asyncio.Event()
+
     async def cover(product_id, timeout):
+        await release_cover.wait()
         assert product_id == "9PK087LNGJC5"
         return {"urls": {"grid": "https://store-images.s-microsoft.com/test"}}
 
@@ -258,6 +264,10 @@ async def test_xbox_pc_session_exports_snapshot_and_only_new_unlocks(make, tmp_p
     watcher, toasts = make({"microsoft": _Store("microsoft", [before, after])})
 
     await watcher._on_game_launched(store="microsoft", game_id="merged-game")
+    startup = watcher._startup_tasks["microsoft:merged-game"]
+    assert not startup.done()
+    release_cover.set()
+    await startup
     running = feed.directory / "running.json"
     events = feed.directory / "achievement-events.jsonl"
     assert json.loads(running.read_text())["titleId"] == "unifideck.42"

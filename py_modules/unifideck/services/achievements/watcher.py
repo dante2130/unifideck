@@ -74,6 +74,7 @@ class AchievementWatcher:
         self._bus = bus
         self._registry = registry
         self._state = AchievementStateStore()
+        self._startup_tasks: dict[str, asyncio.Task[None]] = {}
         self._poll_tasks: dict[str, asyncio.Task[Any]] = {}
         self._baseline: dict[str, set[str]] = {}
         self._seen: dict[str, set[str]] = {}
@@ -100,6 +101,27 @@ class AchievementWatcher:
 
     @subscribe(Events.GAME_LAUNCHED)
     async def _on_game_launched(self, **kwargs: Any) -> None:
+        """Start Xbox tracking outside the launch event watchdog."""
+        store = kwargs.get("store")
+        game_id = kwargs.get("game_id")
+        if store != "microsoft" or not game_id:
+            await self._start_session(**kwargs)
+            return
+
+        key = f"{store}:{game_id}"
+        self._cancel(key)
+        task = asyncio.create_task(self._start_session(**kwargs))
+        self._startup_tasks[key] = task
+
+        def started(completed: asyncio.Task[None]) -> None:
+            if self._startup_tasks.get(key) is completed:
+                del self._startup_tasks[key]
+            if not completed.cancelled() and (error := completed.exception()) is not None:
+                logger.warning("Could not start achievement tracking for %s: %s", key, error)
+
+        task.add_done_callback(started)
+
+    async def _start_session(self, **kwargs: Any) -> None:
         """Snapshot the baseline unlocks and start the during-play poll."""
         store = kwargs.get("store")
         game_id = kwargs.get("game_id")
@@ -124,7 +146,9 @@ class AchievementWatcher:
                 feed.has_baseline = True
         self._baseline[key] = set(baseline)
         self._seen[key] = set(baseline)
-        self._cancel(key)
+        previous = self._poll_tasks.pop(key, None)
+        if previous is not None:
+            previous.cancel()
         self._poll_tasks[key] = asyncio.create_task(
             self._poll_loop(store, game_id),
         )
@@ -162,7 +186,7 @@ class AchievementWatcher:
         for feed in self._nexus_feeds.values():
             feed.set_running(False)
         self._nexus_feeds.clear()
-        for key in list(self._poll_tasks):
+        for key in self._startup_tasks.keys() | self._poll_tasks.keys():
             self._cancel(key)
         if self._comet is not None:
             comet, self._comet = self._comet, None
@@ -341,6 +365,7 @@ class AchievementWatcher:
 
     def _cancel(self, key: str) -> None:
         """Cancel."""
-        task = self._poll_tasks.pop(key, None)
-        if task is not None and not task.done():
-            task.cancel()
+        for tasks in (self._startup_tasks, self._poll_tasks):
+            task = tasks.pop(key, None)
+            if task is not None and not task.done():
+                task.cancel()
